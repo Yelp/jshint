@@ -8,7 +8,8 @@
 
 var JSHINT  = require('../../jshint.js').JSHINT,
     fs      = require('fs'),
-    TestRun = require("../helpers/testhelper").setup.testRun;
+    TestRun = require('../helpers/testhelper').setup.testRun,
+    fixture = require('../helpers/fixture').fixture;
 
 /**
  * Option `shadow` allows you to re-define variables later in code.
@@ -74,8 +75,8 @@ exports.latedef = function () {
         .test(src, { latedef: true });
 };
 
-exports.latedefwundef = function () {
-    var src = fs.readFileSync(__dirname + '/fixtures/latedefundef.js', 'utf8');
+exports['combination of latedef and undef'] = function () {
+    var src = fixture('latedefundef.js');
 
     // Assures that when `undef` is set to true, it'll report undefined variables
     // and late definitions won't be reported as `latedef` is set to false.
@@ -309,7 +310,7 @@ exports.expr = function () {
     }
 };
 
-/** Option `undef` requires you to always define variables you use */
+// Option `undef` requires you to always define variables you use.
 exports.undef = function () {
     var src = fs.readFileSync(__dirname + '/fixtures/undef.js', 'utf8');
 
@@ -329,6 +330,15 @@ exports.undef = function () {
         .addError(21, "'localUndef' is not defined.")
         .addError(22, "'localUndef' is not defined.")
         .test(src, { undef: true });
+};
+
+// Regression test for `undef` to make sure that ...
+exports['undef in a function scope'] = function () {
+    var src = fixture('undef_func.js');
+
+    // Make sure that the lint is clean with and without undef.
+    TestRun().test(src);
+    TestRun().test(src, { undef: true });
 };
 
 /** Option `scripturl` allows the use of javascript-type URLs */
@@ -772,6 +782,7 @@ exports.laxbreak = function () {
 
     TestRun()
         .addError(2, "Bad line breaking before ','.")
+        .addError(3, "Comma warnings can be turned off with 'laxcomma'")
         .addError(12, "Bad line breaking before ','.")
         .test(src);
 
@@ -960,8 +971,6 @@ exports.scope = function () {
         .addError(12, "'x' used out of scope.")
         .addError(20, "'aa' used out of scope.")
         .addError(27, "'bb' used out of scope.")
-        .addError(32, "'bb' is not defined.")
-        .addError(36, "'bb' is not defined.")
         .addError(37, "'cc' is not defined.")
         .addError(42, "'bb' is not defined.")
         .test(src);
@@ -1017,4 +1026,36 @@ exports.smarttabs = function () {
     TestRun()
         .addError(5, "Mixed spaces and tabs.")
         .test(src, { smarttabs: true });
+};
+
+/*
+ * Tests the `laxcomma` option
+ */
+exports.laxcomma = function () {
+    var src = fs.readFileSync(__dirname + '/fixtures/laxcomma.js', 'utf8');
+
+    // All errors.
+    TestRun()
+        .addError(1, "Bad line breaking before ','.")
+        .addError(2, "Bad line breaking before ','.")
+        .addError(6, "Bad line breaking before ','.")
+        .addError(10, "Bad line breaking before '&&'.")
+        .addError(15, "Bad line breaking before '?'.")
+        .test(src);
+
+    // Allows bad line breaking, but not on commas.
+    TestRun()
+        .addError(1, "Bad line breaking before ','.")
+        .addError(2, "Bad line breaking before ','.")
+        .addError(6, "Bad line breaking before ','.")
+        .test(src, { laxbreak: true });
+
+    // Allows comma-first style but warns on bad line breaking
+    TestRun()
+        .addError(10, "Bad line breaking before '&&'.")
+        .addError(15, "Bad line breaking before '?'.")
+        .test(src, { laxcomma: true });
+
+    // No errors if both laxbreak and laxcomma are turned on
+    TestRun().test(src, { laxbreak: true, laxcomma: true });
 };
